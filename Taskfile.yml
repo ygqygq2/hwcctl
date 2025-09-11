@@ -1,0 +1,233 @@
+version: "3"
+
+vars:
+  VERSION: '{{.VERSION | default "dev"}}'
+  BUILD_TIME:
+    sh: date -u '+%Y-%m-%d %H:%M:%S UTC'
+  COVERAGE_THRESHOLD: 50
+
+tasks:
+  # === 依赖管理 ===
+  deps:
+    desc: 下载依赖
+    cmds:
+      - go mod download
+
+  tidy:
+    desc: 整理依赖
+    cmds:
+      - go mod tidy
+
+  deps-check:
+    desc: 检查依赖是否需要更新
+    silent: true
+    cmds:
+      - go mod tidy
+      - |
+        if ! git diff --exit-code go.mod go.sum >/dev/null 2>&1; then
+          echo "❌ go.mod 或 go.sum 文件需要更新"
+          echo "请运行: task tidy"
+          exit 1
+        else
+          echo "✅ 依赖文件是最新的"
+        fi
+
+  # === 代码质量检查 ===
+  vet:
+    desc: 运行 Go vet 静态分析
+    cmds:
+      - go vet ./...
+
+  fmt:
+    desc: 格式化代码
+    cmds:
+      - go fmt ./...
+
+  fmt-check:
+    desc: 检查代码格式
+    silent: true
+    cmds:
+      - |
+        unformatted=$(gofmt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "❌ 以下文件需要格式化:"
+          echo "$unformatted"
+          echo "请运行: task fmt"
+          exit 1
+        else
+          echo "✅ 代码格式正确"
+        fi
+
+  # === 测试相关 ===
+  test:
+    desc: 运行单元测试
+    cmds:
+      - go test -v ./...
+
+  test-race:
+    desc: 运行单元测试 (带竞态检测)
+    cmds:
+      - go test -v -race ./...
+
+  test-coverage:
+    desc: 运行测试并生成覆盖率报告
+    cmds:
+      - go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - |
+        COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
+        echo "当前测试覆盖率: ${COVERAGE}%"
+
+        if (( $(echo "$COVERAGE < {{.COVERAGE_THRESHOLD}}" | bc -l) )); then
+          echo "❌ 测试覆盖率 ${COVERAGE}% 低于要求的 {{.COVERAGE_THRESHOLD}}%"
+          exit 1
+        else
+          echo "✅ 测试覆盖率 ${COVERAGE}% 达到要求"
+        fi
+
+  test-short:
+    desc: 运行快速测试 (跳过长时间运行的测试)
+    cmds:
+      - go test -v -short ./...
+
+  # === 构建相关 ===
+  build:
+    desc: 构建二进制文件 (使用 GoReleaser)
+    cmds:
+      - goreleaser build --single-target --snapshot --clean
+
+  build-with-version:
+    desc: 构建带版本信息的二进制文件 (使用 GoReleaser)
+    cmds:
+      - goreleaser build --single-target --snapshot --clean
+
+  build-release:
+    desc: 构建发布包 (多平台，使用 GoReleaser)
+    cmds:
+      - goreleaser build --snapshot --clean
+
+  # === CI/CD 任务 ===
+  ci-quality:
+    desc: CI 代码质量检查 (包含所有检查项)
+    deps: [deps]
+    cmds:
+      - task: deps-check
+      - task: fmt-check
+      - task: vet
+      - task: test-coverage
+      - task: build
+
+  # === 运行相关 ===
+  run:
+    desc: 运行主程序
+    cmds:
+      - go run main.go
+
+  run-help:
+    desc: 显示帮助信息
+    cmds:
+      - go run main.go --help
+
+  run-version:
+    desc: 显示版本信息
+    cmds:
+      - go run main.go version
+
+  # === 清理相关 ===
+  clean:
+    desc: 清理构建产物
+    cmds:
+      - rm -f hwcctl
+      - rm -f coverage.out coverage.html
+      - rm -rf dist/
+
+  clean-all:
+    desc: 清理所有产物
+    deps: [clean]
+    cmds:
+      - go clean -cache
+      - go clean -modcache
+
+  # === 发布相关 ===
+  release:
+    desc: 发布版本 (需要 Git 标签)
+    cmds:
+      - goreleaser release --clean
+
+  release-snapshot:
+    desc: 构建快照版本 (本地测试用)
+    cmds:
+      - goreleaser release --snapshot --clean
+      - echo "构建产物在 dist/ 目录中"
+
+  release-check:
+    desc: 检查 GoReleaser 配置
+    cmds:
+      - goreleaser check
+
+  # === Git Hooks 管理 ===
+  install-hooks:
+    desc: 安装 Git hooks (pre-commit)
+    cmds:
+      - |
+        echo "🔧 安装 Git pre-commit hook..."
+        if [ -f .git/hooks/pre-commit ]; then
+          echo "✅ pre-commit hook 已存在"
+        else
+          echo "❌ pre-commit hook 不存在，请检查文件"
+          exit 1
+        fi
+        chmod +x .git/hooks/pre-commit
+        echo "✅ Git hooks 安装完成"
+        echo "📝 现在每次 git commit 前会自动："
+        echo "   - 格式化 Go 代码 (task fmt)"
+        echo "   - 检查代码格式 (task fmt-check)"  
+        echo "   - 运行静态分析 (task vet)"
+        echo "   - 检查依赖状态 (task deps-check)"
+
+  uninstall-hooks:
+    desc: 卸载 Git hooks
+    cmds:
+      - |
+        echo "🗑️  卸载 Git hooks..."
+        if [ -f .git/hooks/pre-commit ]; then
+          rm .git/hooks/pre-commit
+          echo "✅ pre-commit hook 已删除"
+        else
+          echo "ℹ️  pre-commit hook 不存在"
+        fi
+
+  test-hooks:
+    desc: 测试 Git hooks 功能
+    cmds:
+      - |
+        echo "🧪 测试 pre-commit hook..."
+        if [ -x .git/hooks/pre-commit ]; then
+          echo "✅ pre-commit hook 存在且可执行"
+          echo "📋 hook 内容预览:"
+          head -10 .git/hooks/pre-commit
+        else
+          echo "❌ pre-commit hook 不存在或不可执行"
+          echo "请运行: task install-hooks"
+        fi
+
+  # === 开发工具 ===
+  dev-setup:
+    desc: 设置开发环境
+    cmds:
+      - task: deps
+      - task: install-hooks
+      - echo "✅ 开发环境设置完成"
+
+  dev-test:
+    desc: 开发时快速测试
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: test
+
+  dev-build:
+    desc: 开发时构建测试
+    cmds:
+      - task: build
+      - echo "✅ 构建完成，可执行文件在 dist/ 目录"
