@@ -63,7 +63,7 @@ func NewRetryer(config *Config) *Retryer {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	
+
 	return &Retryer{
 		config: config,
 	}
@@ -75,12 +75,12 @@ type RetryableFunc func() error
 // Do 执行重试逻辑
 func (r *Retryer) Do(ctx context.Context, fn RetryableFunc) error {
 	var lastErr error
-	
+
 	for attempt := 1; attempt <= r.config.MaxAttempts; attempt++ {
 		if r.config.Debug {
 			fmt.Printf("[DEBUG] 重试尝试 %d/%d\n", attempt, r.config.MaxAttempts)
 		}
-		
+
 		// 执行函数
 		err := fn()
 		if err == nil {
@@ -89,9 +89,9 @@ func (r *Retryer) Do(ctx context.Context, fn RetryableFunc) error {
 			}
 			return nil
 		}
-		
+
 		lastErr = err
-		
+
 		// 检查是否是华为云错误且不可重试
 		if hwErr, ok := err.(*errors.HuaweiCloudError); ok {
 			if !hwErr.IsRetryable() {
@@ -101,19 +101,19 @@ func (r *Retryer) Do(ctx context.Context, fn RetryableFunc) error {
 				return err
 			}
 		}
-		
+
 		// 如果是最后一次尝试，直接返回错误
 		if attempt == r.config.MaxAttempts {
 			break
 		}
-		
+
 		// 计算延迟时间
 		delay := r.calculateDelay(attempt)
-		
+
 		if r.config.Debug {
 			fmt.Printf("[DEBUG] 重试失败: %v, 等待 %v 后重试\n", err, delay)
 		}
-		
+
 		// 检查上下文是否被取消
 		select {
 		case <-ctx.Done():
@@ -122,12 +122,12 @@ func (r *Retryer) Do(ctx context.Context, fn RetryableFunc) error {
 			// 继续下一次重试
 		}
 	}
-	
+
 	// 如果最大重试次数为 1，直接返回原始错误，不添加重试信息
 	if r.config.MaxAttempts == 1 {
 		return lastErr
 	}
-	
+
 	return fmt.Errorf("重试失败，已达到最大重试次数 %d: %w", r.config.MaxAttempts, lastErr)
 }
 
@@ -135,12 +135,12 @@ func (r *Retryer) Do(ctx context.Context, fn RetryableFunc) error {
 func (r *Retryer) DoWithResult(ctx context.Context, fn func() (interface{}, error)) (interface{}, error) {
 	var lastErr error
 	var result interface{}
-	
+
 	for attempt := 1; attempt <= r.config.MaxAttempts; attempt++ {
 		if r.config.Debug {
 			fmt.Printf("[DEBUG] 重试尝试 %d/%d\n", attempt, r.config.MaxAttempts)
 		}
-		
+
 		// 执行函数
 		res, err := fn()
 		if err == nil {
@@ -149,10 +149,10 @@ func (r *Retryer) DoWithResult(ctx context.Context, fn func() (interface{}, erro
 			}
 			return res, nil
 		}
-		
+
 		lastErr = err
 		result = res
-		
+
 		// 检查是否是华为云错误且不可重试
 		if hwErr, ok := err.(*errors.HuaweiCloudError); ok {
 			if !hwErr.IsRetryable() {
@@ -162,19 +162,19 @@ func (r *Retryer) DoWithResult(ctx context.Context, fn func() (interface{}, erro
 				return result, err
 			}
 		}
-		
+
 		// 如果是最后一次尝试，直接返回错误
 		if attempt == r.config.MaxAttempts {
 			break
 		}
-		
+
 		// 计算延迟时间
 		delay := r.calculateDelay(attempt)
-		
+
 		if r.config.Debug {
 			fmt.Printf("[DEBUG] 重试失败: %v, 等待 %v 后重试\n", err, delay)
 		}
-		
+
 		// 检查上下文是否被取消
 		select {
 		case <-ctx.Done():
@@ -183,45 +183,45 @@ func (r *Retryer) DoWithResult(ctx context.Context, fn func() (interface{}, erro
 			// 继续下一次重试
 		}
 	}
-	
+
 	// 如果最大重试次数为 1，直接返回原始错误，不添加重试信息
 	if r.config.MaxAttempts == 1 {
 		return result, lastErr
 	}
-	
+
 	return result, fmt.Errorf("重试失败，已达到最大重试次数 %d: %w", r.config.MaxAttempts, lastErr)
 }
 
 // calculateDelay 计算延迟时间
 func (r *Retryer) calculateDelay(attempt int) time.Duration {
 	var delay time.Duration
-	
+
 	switch r.config.Strategy {
 	case StrategyFixed:
 		delay = r.config.BaseDelay
-		
+
 	case StrategyLinear:
 		delay = time.Duration(attempt) * r.config.BaseDelay
-		
+
 	case StrategyExponential:
 		delay = time.Duration(float64(r.config.BaseDelay) * math.Pow(r.config.Multiplier, float64(attempt-1)))
-		
+
 	default:
 		delay = r.config.BaseDelay
 	}
-	
+
 	// 应用最大延迟限制
 	if delay > r.config.MaxDelay {
 		delay = r.config.MaxDelay
 	}
-	
+
 	// 添加抖动
 	if r.config.Jitter > 0 {
 		jitterAmount := float64(delay) * r.config.Jitter
 		jitter := time.Duration(rand.Float64() * jitterAmount)
 		delay += jitter
 	}
-	
+
 	return delay
 }
 
@@ -230,7 +230,7 @@ func IsRetryable(err error) bool {
 	if hwErr, ok := err.(*errors.HuaweiCloudError); ok {
 		return hwErr.IsRetryable()
 	}
-	
+
 	// 检查其他类型的可重试错误
 	errMsg := err.Error()
 	retryablePatterns := []string{
@@ -242,24 +242,24 @@ func IsRetryable(err error) bool {
 		"服务不可用",
 		"超时",
 	}
-	
+
 	for _, pattern := range retryablePatterns {
 		if contains(errMsg, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
 // contains 检查字符串是否包含子字符串（不区分大小写）
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		   (s == substr || 
-		    len(s) > len(substr) && 
-		    (s[:len(substr)] == substr || 
-		     s[len(s)-len(substr):] == substr || 
-		     containsSubstring(s, substr)))
+	return len(s) >= len(substr) &&
+		(s == substr ||
+			len(s) > len(substr) &&
+				(s[:len(substr)] == substr ||
+					s[len(s)-len(substr):] == substr ||
+					containsSubstring(s, substr)))
 }
 
 func containsSubstring(s, substr string) bool {

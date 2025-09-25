@@ -69,12 +69,12 @@ func NewClient() (*Client, error) {
 	credentialsBuilder := global.NewCredentialsBuilder().
 		WithAk(creds.AccessKeyID).
 		WithSk(creds.SecretAccessKey)
-	
+
 	// 如果配置了 Domain ID，则使用它
 	if creds.DomainID != "" {
 		credentialsBuilder = credentialsBuilder.WithDomainId(creds.DomainID)
 	}
-	
+
 	authCredentials, err := credentialsBuilder.SafeBuild()
 	if err != nil {
 		return nil, hwErrors.NewAuthError(fmt.Sprintf("创建认证信息失败: %v", err))
@@ -199,7 +199,7 @@ func (c *Client) GetTaskStatus(taskID string) (*Task, error) {
 
 	// 构建查询请求
 	request := &model.ShowHistoryTasksRequest{}
-	
+
 	// 设置查询范围（最近7天）
 	endTime := time.Now().Unix() * 1000
 	startTime := time.Now().AddDate(0, 0, -7).Unix() * 1000
@@ -270,7 +270,7 @@ func convertToTask(hwTask *model.TasksObject) *Task {
 		total := *hwTask.Total
 		succeed := getIntValue(hwTask.Succeed)
 		failed := getIntValue(hwTask.Failed)
-		
+
 		if total > 0 {
 			completed := succeed + failed
 			task.Progress = int(float64(completed) / float64(total) * 100)
@@ -284,19 +284,19 @@ func convertToTask(hwTask *model.TasksObject) *Task {
 func getRegion(regionName string) (*region.Region, error) {
 	// 华为云支持的区域映射
 	regionMap := map[string]*region.Region{
-		"cn-north-1":     region.NewRegion("cn-north-1", "https://cdn.myhuaweicloud.com"),     // 华北-北京一
-		"cn-north-4":     region.NewRegion("cn-north-4", "https://cdn.myhuaweicloud.com"),     // 华北-北京四
-		"cn-east-2":      region.NewRegion("cn-east-2", "https://cdn.myhuaweicloud.com"),      // 华东-上海二
-		"cn-east-3":      region.NewRegion("cn-east-3", "https://cdn.myhuaweicloud.com"),      // 华东-上海一
-		"cn-south-1":     region.NewRegion("cn-south-1", "https://cdn.myhuaweicloud.com"),     // 华南-广州
-		"cn-southwest-2": region.NewRegion("cn-southwest-2", "https://cdn.myhuaweicloud.com"), // 西南-贵阳一
+		"cn-north-1":     region.NewRegion("cn-north-1", "https://cdn.myhuaweicloud.com"),                    // 华北-北京一
+		"cn-north-4":     region.NewRegion("cn-north-4", "https://cdn.myhuaweicloud.com"),                    // 华北-北京四
+		"cn-east-2":      region.NewRegion("cn-east-2", "https://cdn.myhuaweicloud.com"),                     // 华东-上海二
+		"cn-east-3":      region.NewRegion("cn-east-3", "https://cdn.myhuaweicloud.com"),                     // 华东-上海一
+		"cn-south-1":     region.NewRegion("cn-south-1", "https://cdn.myhuaweicloud.com"),                    // 华南-广州
+		"cn-southwest-2": region.NewRegion("cn-southwest-2", "https://cdn.myhuaweicloud.com"),                // 西南-贵阳一
 		"ap-southeast-1": region.NewRegion("ap-southeast-1", "https://cdn.ap-southeast-1.myhuaweicloud.com"), // 亚太-新加坡
 		"ap-southeast-2": region.NewRegion("ap-southeast-2", "https://cdn.ap-southeast-2.myhuaweicloud.com"), // 亚太-悉尼
 		"ap-southeast-3": region.NewRegion("ap-southeast-3", "https://cdn.ap-southeast-3.myhuaweicloud.com"), // 亚太-吉隆坡
-		"af-south-1":     region.NewRegion("af-south-1", "https://cdn.af-south-1.myhuaweicloud.com"),     // 非洲-约翰内斯堡
-		"na-mexico-1":    region.NewRegion("na-mexico-1", "https://cdn.na-mexico-1.myhuaweicloud.com"),    // 拉美-墨西哥城一
-		"la-north-2":     region.NewRegion("la-north-2", "https://cdn.la-north-2.myhuaweicloud.com"),     // 拉美-墨西哥城二
-		"sa-brazil-1":    region.NewRegion("sa-brazil-1", "https://cdn.sa-brazil-1.myhuaweicloud.com"),    // 拉美-圣保罗一
+		"af-south-1":     region.NewRegion("af-south-1", "https://cdn.af-south-1.myhuaweicloud.com"),         // 非洲-约翰内斯堡
+		"na-mexico-1":    region.NewRegion("na-mexico-1", "https://cdn.na-mexico-1.myhuaweicloud.com"),       // 拉美-墨西哥城一
+		"la-north-2":     region.NewRegion("la-north-2", "https://cdn.la-north-2.myhuaweicloud.com"),         // 拉美-墨西哥城二
+		"sa-brazil-1":    region.NewRegion("sa-brazil-1", "https://cdn.sa-brazil-1.myhuaweicloud.com"),       // 拉美-圣保罗一
 	}
 
 	if regionObj, exists := regionMap[regionName]; exists {

@@ -10,12 +10,12 @@ import (
 
 // Config 华为云认证配置
 type Config struct {
-	AccessKey    string
-	SecretKey    string
-	Region       string
-	DomainID     string
-	MaxRetries   int  `yaml:"max_retries"`   // 最大重试次数，默认 0（不重试）
-	EnableRetry  bool `yaml:"enable_retry"`  // 是否启用重试，默认 false
+	AccessKey   string
+	SecretKey   string
+	Region      string
+	DomainID    string
+	MaxRetries  int  `yaml:"max_retries"`  // 最大重试次数，默认 0（不重试）
+	EnableRetry bool `yaml:"enable_retry"` // 是否启用重试，默认 false
 }
 
 // Credentials 华为云认证凭证
@@ -23,7 +23,7 @@ type Credentials struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	Region          string
-	DomainID        string 
+	DomainID        string
 }
 
 // Profile 配置文件中的 profile
@@ -33,8 +33,8 @@ type Profile struct {
 	Region          string `yaml:"region"`
 	DomainID        string `yaml:"domain_id"`
 	Output          string `yaml:"output"`
-	MaxRetries      int    `yaml:"max_retries"`   // 最大重试次数，默认 0
-	EnableRetry     bool   `yaml:"enable_retry"`  // 是否启用重试，默认 false
+	MaxRetries      int    `yaml:"max_retries"`  // 最大重试次数，默认 0
+	EnableRetry     bool   `yaml:"enable_retry"` // 是否启用重试，默认 false
 }
 
 // ConfigFile 配置文件结构

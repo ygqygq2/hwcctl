@@ -78,7 +78,7 @@ func NewHTTPError(statusCode int, body string) *HuaweiCloudError {
 	errorType := getErrorTypeFromStatusCode(statusCode)
 	code := fmt.Sprintf("HTTP%d", statusCode)
 	message := getMessageFromStatusCode(statusCode)
-	
+
 	return &HuaweiCloudError{
 		Type:       errorType,
 		Code:       code,
@@ -93,7 +93,7 @@ func NewHTTPError(statusCode int, body string) *HuaweiCloudError {
 func ParseHuaweiCloudError(statusCode int, body string) *HuaweiCloudError {
 	// 这里可以解析华为云特定的错误格式
 	// 例如：{"error": {"code": "CDN.0001", "message": "Invalid parameter"}}
-	
+
 	// 尝试从响应体中提取错误信息
 	if strings.Contains(body, "Invalid") || strings.Contains(body, "invalid") {
 		return &HuaweiCloudError{
@@ -105,7 +105,7 @@ func ParseHuaweiCloudError(statusCode int, body string) *HuaweiCloudError {
 			Retryable:  false,
 		}
 	}
-	
+
 	if strings.Contains(body, "Unauthorized") || strings.Contains(body, "unauthorized") {
 		return &HuaweiCloudError{
 			Type:       ErrorTypeAuth,
@@ -116,7 +116,7 @@ func ParseHuaweiCloudError(statusCode int, body string) *HuaweiCloudError {
 			Retryable:  false,
 		}
 	}
-	
+
 	if strings.Contains(body, "Forbidden") || strings.Contains(body, "forbidden") {
 		return &HuaweiCloudError{
 			Type:       ErrorTypePermission,
@@ -127,7 +127,7 @@ func ParseHuaweiCloudError(statusCode int, body string) *HuaweiCloudError {
 			Retryable:  false,
 		}
 	}
-	
+
 	// 默认错误
 	return NewHTTPError(statusCode, body)
 }
@@ -193,13 +193,13 @@ func isRetryableError(errorType ErrorType, code string) bool {
 			"InternalError",
 			"ThrottleException",
 		}
-		
+
 		for _, retryableCode := range retryableCodes {
 			if strings.Contains(code, retryableCode) {
 				return true
 			}
 		}
-		
+
 		return false
 	}
 }
@@ -207,19 +207,19 @@ func isRetryableError(errorType ErrorType, code string) bool {
 // isRetryableStatusCode 判断 HTTP 状态码是否可重试
 func isRetryableStatusCode(statusCode int) bool {
 	retryableStatusCodes := []int{
-		http.StatusInternalServerError,     // 500
-		http.StatusBadGateway,              // 502
-		http.StatusServiceUnavailable,      // 503
-		http.StatusGatewayTimeout,          // 504
-		http.StatusTooManyRequests,         // 429
+		http.StatusInternalServerError, // 500
+		http.StatusBadGateway,          // 502
+		http.StatusServiceUnavailable,  // 503
+		http.StatusGatewayTimeout,      // 504
+		http.StatusTooManyRequests,     // 429
 	}
-	
+
 	for _, code := range retryableStatusCodes {
 		if statusCode == code {
 			return true
 		}
 	}
-	
+
 	return false
 }
 

@@ -140,7 +140,7 @@ func (f *Formatter) printSliceAsTable(v reflect.Value) error {
 // printStructAsTable 打印结构体为表格
 func (f *Formatter) printStructAsTable(v reflect.Value) error {
 	t := v.Type()
-	
+
 	// 打印两列表格：字段名 | 值
 	fmt.Fprintln(f.writer, "FIELD\tVALUE")
 	for i := 0; i < v.NumField(); i++ {
@@ -148,17 +148,17 @@ func (f *Formatter) printStructAsTable(v reflect.Value) error {
 		if !field.IsExported() {
 			continue
 		}
-		
+
 		name := field.Name
 		tag := field.Tag.Get("table")
 		if tag != "" {
 			name = tag
 		}
-		
+
 		value := v.Field(i).Interface()
 		fmt.Fprintf(f.writer, "%s\t%v\n", name, value)
 	}
-	
+
 	return f.writer.Flush()
 }
 

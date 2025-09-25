@@ -17,19 +17,19 @@ import (
 
 // refreshCmd 代表 CDN 刷新命令
 var cdnRefreshCmd = &cobra.Command{
-	Use:   "refresh",
-	Short: "刷新 CDN 缓存",
-	Long:  `刷新指定的 URL 或目录的 CDN 缓存，支持批量刷新。`,
-	RunE:  runCDNRefresh,
+	Use:          "refresh",
+	Short:        "刷新 CDN 缓存",
+	Long:         `刷新指定的 URL 或目录的 CDN 缓存，支持批量刷新。`,
+	RunE:         runCDNRefresh,
 	SilenceUsage: true, // 发生错误时不显示用法信息
 }
 
 // preloadCmd 代表 CDN 预热命令
 var cdnPreloadCmd = &cobra.Command{
-	Use:   "preload",
-	Short: "预热 CDN 缓存",
-	Long:  `预热指定的 URL 到 CDN 边缘节点，提高访问速度。`,
-	RunE:  runCDNPreload,
+	Use:          "preload",
+	Short:        "预热 CDN 缓存",
+	Long:         `预热指定的 URL 到 CDN 边缘节点，提高访问速度。`,
+	RunE:         runCDNPreload,
 	SilenceUsage: true, // 发生错误时不显示用法信息
 }
 
@@ -104,7 +104,7 @@ func runCDNRefresh(cmd *cobra.Command, args []string) error {
 	if outputFormat == "table" || outputFormat == "text" {
 		taskData := result.(map[string]interface{})
 		taskId := taskData["task_id"].(string)
-		
+
 		logx.Infof("CDN 缓存刷新任务已提交，任务 ID: %s", taskId)
 		formatter.PrintSuccess("CDN 缓存刷新任务已提交成功")
 		fmt.Printf("任务 ID: %s\n", taskId)
@@ -187,7 +187,7 @@ func runCDNPreload(cmd *cobra.Command, args []string) error {
 	if outputFormat == "table" || outputFormat == "text" {
 		taskData := result.(map[string]interface{})
 		taskId := taskData["task_id"].(string)
-		
+
 		logx.Infof("CDN 缓存预热任务已提交，任务 ID: %s", taskId)
 		formatter.PrintSuccess("CDN 缓存预热任务已提交成功")
 		fmt.Printf("任务 ID: %s\n", taskId)
@@ -202,11 +202,11 @@ func runCDNPreload(cmd *cobra.Command, args []string) error {
 
 // taskCmd 代表查询 CDN 任务状态命令
 var cdnTaskCmd = &cobra.Command{
-	Use:   "task [task-id]",
-	Short: "查询 CDN 任务状态",
-	Long:  `查询指定任务 ID 的 CDN 刷新或预热任务状态。`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runCDNTask,
+	Use:          "task [task-id]",
+	Short:        "查询 CDN 任务状态",
+	Long:         `查询指定任务 ID 的 CDN 刷新或预热任务状态。`,
+	Args:         cobra.ExactArgs(1),
+	RunE:         runCDNTask,
 	SilenceUsage: true, // 发生错误时不显示用法信息
 }
 
