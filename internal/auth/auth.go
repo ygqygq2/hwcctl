@@ -10,9 +10,20 @@ import (
 
 // Config 华为云认证配置
 type Config struct {
-	AccessKey string
-	SecretKey string
-	Region    string
+	AccessKey    string
+	SecretKey    string
+	Region       string
+	DomainID     string
+	MaxRetries   int  `yaml:"max_retries"`   // 最大重试次数，默认 0（不重试）
+	EnableRetry  bool `yaml:"enable_retry"`  // 是否启用重试，默认 false
+}
+
+// Credentials 华为云认证凭证
+type Credentials struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	Region          string
+	DomainID        string 
 }
 
 // Profile 配置文件中的 profile
@@ -20,7 +31,10 @@ type Profile struct {
 	AccessKeyID     string `yaml:"access_key_id"`
 	SecretAccessKey string `yaml:"secret_access_key"`
 	Region          string `yaml:"region"`
+	DomainID        string `yaml:"domain_id"`
 	Output          string `yaml:"output"`
+	MaxRetries      int    `yaml:"max_retries"`   // 最大重试次数，默认 0
+	EnableRetry     bool   `yaml:"enable_retry"`  // 是否启用重试，默认 false
 }
 
 // ConfigFile 配置文件结构
@@ -37,8 +51,8 @@ func NewConfig(accessKey, secretKey, region string) *Config {
 	}
 }
 
-// LoadConfig 从多个来源加载认证配置（优先级：命令行参数 > 环境变量 > 配置文件）
-func LoadConfig(accessKeyFlag, secretKeyFlag, regionFlag string) (*Config, error) {
+// LoadConfig 加载配置信息，优先级：命令行参数 > 环境变量 > 配置文件
+func LoadConfig(accessKeyFlag, secretKeyFlag, regionFlag, domainIDFlag string) (*Config, error) {
 	config := &Config{}
 
 	// 1. 尝试从配置文件读取
@@ -47,6 +61,9 @@ func LoadConfig(accessKeyFlag, secretKeyFlag, regionFlag string) (*Config, error
 		config.AccessKey = configFile.Default.AccessKeyID
 		config.SecretKey = configFile.Default.SecretAccessKey
 		config.Region = configFile.Default.Region
+		config.DomainID = configFile.Default.DomainID
+		config.MaxRetries = configFile.Default.MaxRetries
+		config.EnableRetry = configFile.Default.EnableRetry
 	}
 
 	// 2. 从环境变量覆盖
@@ -59,6 +76,9 @@ func LoadConfig(accessKeyFlag, secretKeyFlag, regionFlag string) (*Config, error
 	if envRegion := os.Getenv("HUAWEICLOUD_REGION"); envRegion != "" {
 		config.Region = envRegion
 	}
+	if envDomainID := os.Getenv("HUAWEICLOUD_DOMAIN_ID"); envDomainID != "" {
+		config.DomainID = envDomainID
+	}
 
 	// 3. 从命令行参数覆盖
 	if accessKeyFlag != "" {
@@ -69,6 +89,9 @@ func LoadConfig(accessKeyFlag, secretKeyFlag, regionFlag string) (*Config, error
 	}
 	if regionFlag != "" {
 		config.Region = regionFlag
+	}
+	if domainIDFlag != "" {
+		config.DomainID = domainIDFlag
 	}
 
 	// 设置默认值
@@ -81,13 +104,13 @@ func LoadConfig(accessKeyFlag, secretKeyFlag, regionFlag string) (*Config, error
 
 // LoadFromEnv 从环境变量加载认证配置（保持向后兼容）
 func LoadFromEnv() (*Config, error) {
-	return LoadConfig("", "", "")
+	return LoadConfig("", "", "", "")
 }
 
 // loadConfigFile 加载配置文件
 func loadConfigFile() *ConfigFile {
 	configPath := getConfigPath()
-	
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return nil
 	}
@@ -126,4 +149,42 @@ func (c *Config) Validate() error {
 		return errors.New("区域不能为空")
 	}
 	return nil
+}
+
+// GetCredentials 获取华为云凭证信息，供 CDN 客户端使用
+func GetCredentials() (*Credentials, error) {
+	config, err := LoadConfig("", "", "", "")
+	if err != nil {
+		return nil, err
+	}
+
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &Credentials{
+		AccessKeyID:     config.AccessKey,
+		SecretAccessKey: config.SecretKey,
+		Region:          config.Region,
+		DomainID:        config.DomainID,
+	}, nil
+}
+
+// GetCredentialsWithFlags 根据命令行参数获取凭证信息
+func GetCredentialsWithFlags(accessKey, secretKey, region, domainID string) (*Credentials, error) {
+	config, err := LoadConfig(accessKey, secretKey, region, domainID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &Credentials{
+		AccessKeyID:     config.AccessKey,
+		SecretAccessKey: config.SecretKey,
+		Region:          config.Region,
+		DomainID:        config.DomainID,
+	}, nil
 }

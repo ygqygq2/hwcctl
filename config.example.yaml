@@ -1,0 +1,13 @@
+default:
+  # 华为云认证信息
+  access_key_id: "your-access-key-id"
+  secret_access_key: "your-secret-access-key"
+  region: "cn-north-4"
+  domain_id: "your-domain-id" # CDN 服务需要
+
+  # 输出格式配置
+  output: "table" # table, json, yaml
+
+  # 重试配置
+  enable_retry: false # 是否启用重试，默认 false（只执行一次）
+  max_retries: 3 # 启用重试时的最大重试次数，默认 3

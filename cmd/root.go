@@ -46,6 +46,7 @@ Git 提交: ` + gitCommit + `
 	rootCmd.PersistentFlags().StringP("region", "r", "", "华为云区域 (也可使用环境变量 HUAWEICLOUD_REGION)")
 	rootCmd.PersistentFlags().String("access-key-id", "", "Access Key ID (也可使用环境变量 HUAWEICLOUD_ACCESS_KEY)")
 	rootCmd.PersistentFlags().String("secret-access-key", "", "Secret Access Key (也可使用环境变量 HUAWEICLOUD_SECRET_KEY)")
+	rootCmd.PersistentFlags().String("domain-id", "", "Domain ID (也可使用环境变量 HUAWEICLOUD_DOMAIN_ID)")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "详细输出")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "调试模式")
 	rootCmd.PersistentFlags().String("output", "table", "输出格式 (table|json|yaml)")

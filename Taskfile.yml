@@ -104,7 +104,7 @@ tasks:
   build-release:
     desc: 构建发布包 (多平台，使用 GoReleaser)
     cmds:
-      - goreleaser build --snapshot --clean
+      - goreleaser build --clean
 
   # === CI/CD 任务 ===
   ci-quality:
