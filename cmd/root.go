@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/ygqygq2/hwcctl/internal/logx"
 )
 
 var (
@@ -28,6 +29,13 @@ var rootCmd = &cobra.Command{
 
 类似于 AWS CLI，但专门针对华为云服务设计。`,
 	Version: version,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// 处理调试标志
+		debug, _ := cmd.Flags().GetBool("debug")
+		if debug {
+			logx.SetLevel("debug")
+		}
+	},
 }
 
 // Execute 添加所有子命令到根命令并适当设置标志

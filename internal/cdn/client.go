@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/global"
-	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/config"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/region"
 	cdn "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2/model"
@@ -56,7 +55,17 @@ func NewClient() (*Client, error) {
 		return nil, hwErrors.NewAuthError(fmt.Sprintf("获取认证信息失败: %v", err))
 	}
 
-	// 验证必需的认证信息
+	accessKeyPreview := creds.AccessKeyID
+	if len(accessKeyPreview) > 8 {
+		accessKeyPreview = accessKeyPreview[:8] + "..."
+	}
+	domainIDPreview := creds.DomainID
+	if len(domainIDPreview) > 8 {
+		domainIDPreview = domainIDPreview[:8] + "..."
+	}
+
+	logx.Debugf("CDN 客户端认证信息 - Region: %s, AccessKey: %s, DomainID: %s, ProjectID: %s, EnterpriseProjectID: %s",
+		creds.Region, accessKeyPreview, domainIDPreview, creds.ProjectID, creds.EnterpriseProjectID) // 验证必需的认证信息
 	if creds.AccessKeyID == "" || creds.SecretAccessKey == "" {
 		return nil, hwErrors.NewAuthError("Access Key ID 和 Secret Access Key 不能为空")
 	}
@@ -80,22 +89,20 @@ func NewClient() (*Client, error) {
 		return nil, hwErrors.NewAuthError(fmt.Sprintf("创建认证信息失败: %v", err))
 	}
 
-	// 获取区域对象
+	// 获取区域对象 - 回退到原始方法但增加调试信息
 	regionObj, err := getRegion(creds.Region)
 	if err != nil {
 		return nil, hwErrors.NewValidationError(fmt.Sprintf("不支持的区域: %s", creds.Region))
 	}
 
-	// 创建客户端配置
-	hcConfig := config.DefaultHttpConfig().
-		WithIgnoreSSLVerification(false).
-		WithTimeout(30)
+	// 创建客户端配置 - 使用默认配置测试
+	logx.Debugf("区域信息 - ID: %s", regionObj.Id)
+	logx.Debugf("准备创建CDN客户端，使用默认HTTP配置...")
 
-	// 创建 CDN 客户端
+	// 创建 CDN 客户端 - 先尝试不设置自定义HTTP配置
 	hcClient, err := cdn.CdnClientBuilder().
 		WithRegion(regionObj).
 		WithCredential(authCredentials).
-		WithHttpConfig(hcConfig).
 		SafeBuild()
 	if err != nil {
 		return nil, hwErrors.NewServerError(fmt.Sprintf("创建CDN客户端失败: %v", err))
@@ -115,38 +122,59 @@ func NewClient() (*Client, error) {
 func (c *Client) RefreshCache(urls []string, refreshType string) (string, error) {
 	logx.Debugf("开始刷新 CDN 缓存，类型: %s, URLs: %v", refreshType, urls)
 
-	// 构建刷新请求体
-	refreshTaskBody := &model.RefreshTaskRequestBody{
-		Urls: urls,
-	}
+	// 构建请求 - 完全按照官方示例
+	request := &model.CreateRefreshTasksRequest{}
 
 	// 设置刷新类型
+	var typeEnum model.RefreshTaskRequestBodyType
 	switch refreshType {
 	case "url", "file":
-		typeEnum := model.GetRefreshTaskRequestBodyTypeEnum().FILE
-		refreshTaskBody.Type = &typeEnum
+		typeEnum = model.GetRefreshTaskRequestBodyTypeEnum().FILE
 	case "directory", "dir":
-		typeEnum := model.GetRefreshTaskRequestBodyTypeEnum().DIRECTORY
-		refreshTaskBody.Type = &typeEnum
+		typeEnum = model.GetRefreshTaskRequestBodyTypeEnum().DIRECTORY
 	default:
 		return "", hwErrors.NewValidationError(fmt.Sprintf("不支持的刷新类型: %s，支持的类型: url, directory", refreshType))
 	}
 
-	// 构建请求
-	refreshTaskRequest := &model.RefreshTaskRequest{
+	// 构建刷新任务体 - 按照官方示例
+	refreshTaskBody := &model.RefreshTaskRequestBody{
+		Type: &typeEnum,
+		Urls: urls,
+	}
+
+	// 构建请求体 - 完全按照官方示例
+	request.Body = &model.RefreshTaskRequest{
 		RefreshTask: refreshTaskBody,
 	}
 
-	request := &model.CreateRefreshTasksRequest{
-		Body: refreshTaskRequest,
+	// 获取统一的项目ID（懒加载模式）
+	projectID, err := auth.GetUnifiedProjectID()
+	if err != nil {
+		logx.Debugf("获取项目ID失败，将使用默认配置: %v", err)
+		projectID = "0" // 使用默认值
 	}
 
+	// 设置企业项目ID（如果不是默认值）
+	if projectID != "" && projectID != "0" {
+		logx.Debugf("使用统一项目ID: %s", projectID)
+		request.EnterpriseProjectId = &projectID
+	} else {
+		logx.Debugf("使用默认企业项目ID: 0")
+	} // 打印详细的请求信息
+	logx.Debugf("准备发送CDN刷新请求")
+	logx.Debugf("请求URL将会是: https://cdn.myhuaweicloud.com/v1.0/cdn/content/refresh-tasks")
+	logx.Debugf("刷新类型: %v", *refreshTaskBody.Type)
+	logx.Debugf("URL列表: %v", refreshTaskBody.Urls)
+
 	// 发送请求
+	logx.Debugf("开始发送请求到华为云CDN服务...")
 	response, err := c.cdnClient.CreateRefreshTasks(request)
 	if err != nil {
 		logx.Errorf("刷新 CDN 缓存失败: %v", err)
+		logx.Errorf("错误类型: %T", err)
 		return "", hwErrors.ParseHuaweiCloudError(500, err.Error())
 	}
+	logx.Debugf("请求发送成功，收到响应")
 
 	if response.RefreshTask == nil {
 		return "", hwErrors.NewServerError("刷新任务响应为空")
@@ -162,6 +190,12 @@ func (c *Client) RefreshCache(urls []string, refreshType string) (string, error)
 func (c *Client) PreloadCache(urls []string) (string, error) {
 	logx.Debugf("开始预热 CDN 缓存，URLs: %v", urls)
 
+	// 获取认证信息以获取企业项目ID
+	creds, err := auth.GetCredentials()
+	if err != nil {
+		return "", hwErrors.NewAuthError(fmt.Sprintf("获取认证信息失败: %v", err))
+	}
+
 	// 构建预热请求体
 	preheatingTaskBody := &model.PreheatingTaskRequestBody{
 		Urls: urls,
@@ -172,8 +206,17 @@ func (c *Client) PreloadCache(urls []string) (string, error) {
 		PreheatingTask: preheatingTaskBody,
 	}
 
+	// 设置企业项目ID
+	enterpriseProjectId := creds.EnterpriseProjectID
+	if enterpriseProjectId == "" {
+		enterpriseProjectId = "0" // 默认企业项目
+	}
+
+	logx.Debugf("使用企业项目ID: %s", enterpriseProjectId)
+
 	request := &model.CreatePreheatingTasksRequest{
-		Body: preheatingTaskRequest,
+		EnterpriseProjectId: &enterpriseProjectId,
+		Body:                preheatingTaskRequest,
 	}
 
 	// 发送请求
