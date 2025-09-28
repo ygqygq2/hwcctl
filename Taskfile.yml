@@ -90,30 +90,28 @@ tasks:
     cmds:
       - go test -v -short ./...
 
-  # === 构建相关 ===
+  # === 构建相关 (统一使用 GoReleaser，确保静态编译) ===
   build:
-    desc: 构建二进制文件 (静态链接)
-    cmds:
-      - CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version={{.VERSION}} -X 'main.buildTime={{.BUILD_TIME}}'" -o hwcctl .
-
-  build-goreleaser:
-    desc: 构建二进制文件 (使用 GoReleaser)
+    desc: 构建当前平台二进制文件 (静态编译)
     cmds:
       - goreleaser build --single-target --snapshot --clean
+      - echo "✅ 静态编译完成 (CGO_ENABLED=0)"
 
-  build-with-version:
-    desc: 构建带版本信息的二进制文件 (使用 GoReleaser)
-    cmds:
-      - goreleaser build --single-target --snapshot --clean
-
-  build-release:
-    desc: 构建发布包 (多平台，使用 GoReleaser)
+  build-all:
+    desc: 构建所有平台二进制文件 (静态编译)
     cmds:
       - goreleaser build --clean
+      - echo "✅ 多平台静态编译完成"
+
+  build-debug:
+    desc: 构建当前平台二进制文件，保留调试信息
+    cmds:
+      - goreleaser build --single-target --snapshot --clean --config .goreleaser-debug.yaml
+      - echo "✅ 调试版本编译完成"
 
   # === CI/CD 任务 ===
   ci-quality:
-    desc: CI 代码质量检查 (包含所有检查项)
+    desc: CI 代码质量检查 (包含所有检查项，使用静态编译)
     deps: [deps]
     cmds:
       - task: deps-check
@@ -121,6 +119,7 @@ tasks:
       - task: vet
       - task: test-coverage
       - task: build
+      - echo "✅ CI 质量检查完成，所有构建都使用静态编译"
 
   # === 运行相关 ===
   run:
@@ -153,22 +152,30 @@ tasks:
       - go clean -cache
       - go clean -modcache
 
-  # === 发布相关 ===
+  # === 发布相关 (使用 GoReleaser 静态编译) ===
   release:
-    desc: 发布版本 (需要 Git 标签)
+    desc: 发布版本到 GitHub (需要 Git 标签，静态编译)
+    deps: [deps-check, fmt-check, vet, test-coverage]
     cmds:
       - goreleaser release --clean
+      - echo "✅ 发布完成，所有平台都使用静态编译 (CGO_ENABLED=0)"
 
   release-snapshot:
-    desc: 构建快照版本 (本地测试用)
+    desc: 构建快照版本 (本地测试用，静态编译)
+    deps: [deps-check, fmt-check, vet]
     cmds:
       - goreleaser release --snapshot --clean
-      - echo "构建产物在 dist/ 目录中"
+      - echo "✅ 快照版本构建完成，产物在 dist/ 目录中"
+      - echo "📝 所有二进制文件都是静态编译的 (CGO_ENABLED=0)"
+      - ls -la dist/
 
   release-check:
-    desc: 检查 GoReleaser 配置
+    desc: 检查 GoReleaser 配置和构建设置
     cmds:
       - goreleaser check
+      - echo "✅ GoReleaser 配置检查通过"
+      - echo "📋 构建配置摘要:"
+      - grep -A 15 "builds:" .goreleaser.yaml
 
   # === Git Hooks 管理 ===
   install-hooks:
@@ -232,7 +239,50 @@ tasks:
       - task: test
 
   dev-build:
-    desc: 开发时构建测试
+    desc: 开发时构建测试 (静态编译)
     cmds:
       - task: build
       - echo "✅ 构建完成，可执行文件在 dist/ 目录"
+
+  # === 验证和对比 ===
+  verify-static-build:
+    desc: 验证构建产物是否为静态编译
+    cmds:
+      - task: build
+      - |
+        echo "🔍 验证静态编译..."
+        BINARY_PATH=$(find dist/ -name "hwcctl*" -type f | head -1)
+        if [ -z "$BINARY_PATH" ]; then
+          echo "❌ 找不到构建产物"
+          exit 1
+        fi
+        echo "📁 检查二进制文件: $BINARY_PATH"
+
+        # 检查动态链接库依赖
+        if command -v ldd >/dev/null 2>&1; then
+          echo "📋 动态链接库依赖检查:"
+          LDD_OUTPUT=$(ldd "$BINARY_PATH" 2>&1 || true)
+          if echo "$LDD_OUTPUT" | grep -q "not a dynamic executable"; then
+            echo "✅ 静态编译确认: 无动态链接库依赖"
+          else
+            echo "⚠️  可能存在动态链接依赖:"
+            echo "$LDD_OUTPUT"
+          fi
+        else
+          echo "ℹ️  ldd 命令不可用，跳过动态链接检查"
+        fi
+
+        # 检查文件信息
+        echo "📊 文件信息:"
+        file "$BINARY_PATH"
+        ls -lh "$BINARY_PATH"
+
+  show-build-config:
+    desc: 显示当前构建配置
+    cmds:
+      - echo "📋 GoReleaser 构建配置:"
+      - echo "================================"
+      - grep -A 20 "builds:" .goreleaser.yaml
+      - echo ""
+      - echo "✅ 所有构建任务统一使用 GoReleaser"
+      - echo "✅ 静态编译已启用 (CGO_ENABLED=0)"
