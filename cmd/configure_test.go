@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/ygqygq2/hwcctl/internal/auth"
 )
 
 func TestConfigureCmd(t *testing.T) {
@@ -42,7 +44,7 @@ func TestMaskString(t *testing.T) {
 	}
 }
 
-func TestGetConfigPath(t *testing.T) {
+func TestResolveConfigPath(t *testing.T) {
 	// 保存原始环境变量
 	originalHome := os.Getenv("HOME")
 	defer func() {
@@ -52,13 +54,24 @@ func TestGetConfigPath(t *testing.T) {
 			os.Unsetenv("HOME")
 		}
 	}()
+	originalConfigEnv := os.Getenv("HWCCTL_CONFIG")
+	defer func() {
+		if originalConfigEnv != "" {
+			os.Setenv("HWCCTL_CONFIG", originalConfigEnv)
+		} else {
+			os.Unsetenv("HWCCTL_CONFIG")
+		}
+	}()
+	auth.SetConfigPath("")
+	defer auth.SetConfigPath("")
+	os.Unsetenv("HWCCTL_CONFIG")
 
 	// 测试正常情况
 	testHome := "/tmp/test-home"
 	os.Setenv("HOME", testHome)
 
 	expectedPath := filepath.Join(testHome, ".hwcctl", "config")
-	actualPath := getConfigPath()
+	actualPath := auth.ResolveConfigPath()
 
 	if actualPath != expectedPath {
 		t.Errorf("期望配置路径为 %q，实际为 %q", expectedPath, actualPath)
@@ -66,7 +79,8 @@ func TestGetConfigPath(t *testing.T) {
 
 	// 测试HOME环境变量不存在的情况
 	os.Unsetenv("HOME")
-	fallbackPath := getConfigPath()
+	auth.SetConfigPath("")
+	fallbackPath := auth.ResolveConfigPath()
 
 	if fallbackPath == "" {
 		t.Error("即使HOME环境变量不存在，也应该返回一个有效路径")
@@ -87,6 +101,9 @@ func TestLoadConfig(t *testing.T) {
 	// 设置临时HOME目录，确保配置文件不存在
 	tempDir := t.TempDir()
 	os.Setenv("HOME", tempDir)
+
+	auth.SetConfigPath("")
+	os.Unsetenv("HWCCTL_CONFIG")
 
 	config := loadConfig()
 
@@ -114,6 +131,8 @@ func TestSaveConfig(t *testing.T) {
 	// 创建临时目录用于测试
 	tempDir := t.TempDir()
 	os.Setenv("HOME", tempDir)
+	os.Unsetenv("HWCCTL_CONFIG")
+	auth.SetConfigPath("")
 
 	// 测试配置结构
 	config := Config{
@@ -132,12 +151,13 @@ func TestSaveConfig(t *testing.T) {
 	}
 
 	// 验证文件存在
-	configPath := getConfigPath()
+	configPath := auth.ResolveConfigPath()
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		t.Error("配置文件保存后不存在")
 	}
 
 	// 验证保存的配置可以重新加载
+	auth.SetConfigPath("")
 	loadedConfig := loadConfig()
 	if loadedConfig.Default.AccessKeyID != config.Default.AccessKeyID {
 		t.Errorf("重新加载的AccessKeyID不匹配")

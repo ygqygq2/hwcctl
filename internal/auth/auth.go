@@ -80,6 +80,19 @@ type TokenResponse struct {
 	} `json:"token"`
 }
 
+// configPathOverride 用于覆盖默认配置文件路径
+var configPathOverride string
+
+// SetConfigPath 设置配置文件路径覆盖，传入空字符串将恢复默认解析逻辑
+func SetConfigPath(path string) {
+	configPathOverride = strings.TrimSpace(path)
+}
+
+// ResolveConfigPath 返回当前解析到的配置文件路径
+func ResolveConfigPath() string {
+	return getConfigPath()
+}
+
 // NewConfig 创建新的认证配置
 func NewConfig(accessKey, secretKey, region string) *Config {
 	return &Config{
@@ -185,6 +198,14 @@ func loadConfigFile() *ConfigFile {
 
 // getConfigPath 获取配置文件路径
 func getConfigPath() string {
+	if configPathOverride != "" {
+		return configPathOverride
+	}
+
+	if envPath := strings.TrimSpace(os.Getenv("HWCCTL_CONFIG")); envPath != "" {
+		return envPath
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "./.hwcctl/config"

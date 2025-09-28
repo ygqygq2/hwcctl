@@ -92,6 +92,11 @@ tasks:
 
   # === 构建相关 ===
   build:
+    desc: 构建二进制文件 (静态链接)
+    cmds:
+      - CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version={{.VERSION}} -X 'main.buildTime={{.BUILD_TIME}}'" -o hwcctl .
+
+  build-goreleaser:
     desc: 构建二进制文件 (使用 GoReleaser)
     cmds:
       - goreleaser build --single-target --snapshot --clean

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/ygqygq2/hwcctl/internal/auth"
 	"github.com/ygqygq2/hwcctl/internal/logx"
 	"gopkg.in/yaml.v3"
 )
@@ -81,14 +82,14 @@ func runConfigure(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("✅ 配置已保存")
-	logx.Infof("配置文件已保存到: %s", getConfigPath())
+	logx.Infof("配置文件已保存到: %s", auth.ResolveConfigPath())
 
 	return nil
 }
 
 // loadConfig 加载配置文件
 func loadConfig() Config {
-	configPath := getConfigPath()
+	configPath := auth.ResolveConfigPath()
 	config := Config{
 		Default: Profile{
 			Region: "cn-north-1",
@@ -116,7 +117,7 @@ func loadConfig() Config {
 
 // saveConfig 保存配置文件
 func saveConfig(config Config) error {
-	configPath := getConfigPath()
+	configPath := auth.ResolveConfigPath()
 	configDir := filepath.Dir(configPath)
 
 	// 创建配置目录
@@ -136,15 +137,6 @@ func saveConfig(config Config) error {
 	}
 
 	return nil
-}
-
-// getConfigPath 获取配置文件路径
-func getConfigPath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "./.hwcctl/config"
-	}
-	return filepath.Join(homeDir, ".hwcctl", "config")
 }
 
 // maskString 掩码字符串（用于显示部分信息）

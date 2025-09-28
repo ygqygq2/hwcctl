@@ -3,9 +3,71 @@ package auth
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func resetConfigPathEnv(t *testing.T) {
+	t.Helper()
+	prevOverride := configPathOverride
+	originalEnv := os.Getenv("HWCCTL_CONFIG")
+	t.Cleanup(func() {
+		configPathOverride = prevOverride
+		if originalEnv == "" {
+			os.Unsetenv("HWCCTL_CONFIG")
+		} else {
+			os.Setenv("HWCCTL_CONFIG", originalEnv)
+		}
+	})
+	configPathOverride = ""
+	os.Unsetenv("HWCCTL_CONFIG")
+}
+
+func TestConfigPathOverride(t *testing.T) {
+	resetConfigPathEnv(t)
+
+	SetConfigPath("/tmp/custom-config.yaml")
+	if got := ResolveConfigPath(); got != "/tmp/custom-config.yaml" {
+		t.Fatalf("期望自定义配置路径为 /tmp/custom-config.yaml，实际为 %s", got)
+	}
+}
+
+func TestConfigPathEnv(t *testing.T) {
+	resetConfigPathEnv(t)
+
+	os.Setenv("HWCCTL_CONFIG", "/tmp/env-config.yaml")
+	if got := ResolveConfigPath(); got != "/tmp/env-config.yaml" {
+		t.Fatalf("期望环境变量配置路径为 /tmp/env-config.yaml，实际为 %s", got)
+	}
+
+	// override flag should take precedence
+	SetConfigPath("/tmp/flag-config.yaml")
+	if got := ResolveConfigPath(); got != "/tmp/flag-config.yaml" {
+		t.Fatalf("期望覆盖配置路径为 /tmp/flag-config.yaml，实际为 %s", got)
+	}
+}
+
+func TestConfigPathDefaultHome(t *testing.T) {
+	resetConfigPathEnv(t)
+
+	originalHome := os.Getenv("HOME")
+	defer func() {
+		if originalHome == "" {
+			os.Unsetenv("HOME")
+		} else {
+			os.Setenv("HOME", originalHome)
+		}
+	}()
+
+	tempDir := t.TempDir()
+	os.Setenv("HOME", tempDir)
+
+	expected := filepath.Join(tempDir, ".hwcctl", "config")
+	if got := ResolveConfigPath(); got != expected {
+		t.Fatalf("期望默认配置路径为 %s，实际为 %s", expected, got)
+	}
+}
 
 func TestNewConfig(t *testing.T) {
 	accessKey := "test-access-key"
@@ -26,6 +88,7 @@ func TestNewConfig(t *testing.T) {
 }
 
 func TestLoadFromEnv(t *testing.T) {
+	resetConfigPathEnv(t)
 	// 保存原始环境变量
 	originalAccessKey := os.Getenv("HUAWEICLOUD_ACCESS_KEY")
 	originalSecretKey := os.Getenv("HUAWEICLOUD_SECRET_KEY")
@@ -138,6 +201,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestLoadConfigProfile(t *testing.T) {
+	resetConfigPathEnv(t)
 	// 测试配置文件加载功能
 	tempDir := t.TempDir()
 
@@ -206,6 +270,7 @@ func TestConfigRetrySettings(t *testing.T) {
 }
 
 func TestLoadConfigFunction(t *testing.T) {
+	resetConfigPathEnv(t)
 	// 测试LoadConfig函数
 	config, err := LoadConfig("test-access", "test-secret", "cn-north-1", "test-domain")
 	if err != nil {
@@ -226,6 +291,7 @@ func TestLoadConfigFunction(t *testing.T) {
 }
 
 func TestLoadConfigWithEmptyFlags(t *testing.T) {
+	resetConfigPathEnv(t)
 	// 测试使用空标志的LoadConfig
 	config, err := LoadConfig("", "", "", "")
 	if err != nil {
@@ -318,6 +384,7 @@ func TestCalculateSignature(t *testing.T) {
 }
 
 func TestConfigFileOperations(t *testing.T) {
+	resetConfigPathEnv(t)
 	// 测试配置文件相关操作
 	tempDir := t.TempDir()
 
@@ -347,6 +414,7 @@ func TestConfigFileOperations(t *testing.T) {
 }
 
 func TestGetCredentials(t *testing.T) {
+	resetConfigPathEnv(t)
 	// 测试获取凭证的功能
 	_, err := GetCredentials()
 	if err != nil {
@@ -356,6 +424,7 @@ func TestGetCredentials(t *testing.T) {
 }
 
 func TestHomeDirFallback(t *testing.T) {
+	resetConfigPathEnv(t)
 	// 测试HOME目录获取失败时的后备逻辑
 	originalHome := os.Getenv("HOME")
 	defer func() {

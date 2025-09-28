@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/ygqygq2/hwcctl/internal/auth"
 	"github.com/ygqygq2/hwcctl/internal/logx"
 )
 
@@ -35,6 +36,12 @@ var rootCmd = &cobra.Command{
 		if debug {
 			logx.SetLevel("debug")
 		}
+
+		configPath, _ := cmd.Flags().GetString("config")
+		if configPath == "" {
+			configPath = os.Getenv("HWCCTL_CONFIG")
+		}
+		auth.SetConfigPath(configPath)
 	},
 }
 
@@ -59,6 +66,7 @@ Git 提交: ` + gitCommit + `
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "调试模式")
 	rootCmd.PersistentFlags().String("output", "table", "输出格式 (table|json|yaml)")
 	rootCmd.PersistentFlags().String("profile", "", "使用指定的配置文件 profile")
+	rootCmd.PersistentFlags().String("config", "", "指定配置文件路径 (默认 ~/.hwcctl/config)")
 	rootCmd.PersistentFlags().String("endpoint-url", "", "覆盖默认的服务端点 URL")
 
 	// 设置使用帮助
