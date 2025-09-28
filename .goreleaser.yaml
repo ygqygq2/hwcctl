@@ -48,35 +48,3 @@ snapshot:
 
 changelog:
   disable: true # 禁用自动生成的 changelog，使用手动提供的 release notes
-
-release:
-  github:
-    owner: ygqygq2
-    name: hwcctl
-  draft: false
-  prerelease: auto
-  mode: replace
-  header: |
-    ## hwcctl {{.Tag}} ({{.Date}})
-
-    感谢使用 hwcctl！这是一个华为云命令行工具。
-  footer: |
-    ## Docker 镜像
-
-    ```bash
-    docker pull ghcr.io/ygqygq2/hwcctl:{{.Tag}}
-    ```
-
-    **完整的变更日志**: https://github.com/ygqygq2/hwcctl/compare/{{.PreviousTag}}...{{.Tag}}
-
-# 未来可以添加 Docker 镜像构建
-# dockers:
-#   - image_templates:
-#       - "ghcr.io/ygqygq2/{{.ProjectName}}:{{.Tag}}"
-#       - "ghcr.io/ygqygq2/{{.ProjectName}}:latest"
-#     dockerfile: Dockerfile
-#     build_flag_templates:
-#       - "--label=org.opencontainers.image.created={{.Date}}"
-#       - "--label=org.opencontainers.image.title={{.ProjectName}}"
-#       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-#       - "--label=org.opencontainers.image.version={{.Version}}"
