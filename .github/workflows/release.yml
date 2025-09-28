@@ -55,8 +55,8 @@ jobs:
       - name: Install dependencies
         run: task deps
 
-      - name: Build release artifacts
-        run: task build-release
+      - name: Release artifacts
+        run: task release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
