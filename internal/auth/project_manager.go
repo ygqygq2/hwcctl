@@ -148,17 +148,14 @@ func (pm *ProjectManager) fetchProjectIDFromAPI() (string, error) {
 // RefreshProjectID 强制刷新项目ID缓存
 func (pm *ProjectManager) RefreshProjectID() error {
 	pm.mutex.Lock()
-	defer pm.mutex.Unlock()
-
 	pm.loaded = false
 	pm.projectID = ""
+	pm.mutex.Unlock()
 
-	// 重新获取
+	// 重新获取（不能在锁内调用GetProjectID，会死锁）
 	_, err := pm.GetProjectID()
 	return err
-}
-
-// IsLoaded 检查项目ID是否已加载
+} // IsLoaded 检查项目ID是否已加载
 func (pm *ProjectManager) IsLoaded() bool {
 	pm.mutex.RLock()
 	defer pm.mutex.RUnlock()
