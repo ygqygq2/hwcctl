@@ -63,7 +63,17 @@ jobs:
       - name: Create release body
         run: |
           # 使用awk命令提取最新的版本记录
-          cat CHANGELOG.md | awk '/^# \[/ {if (flag) exit; flag=1} flag {print}' > body.md
+          cat CHANGELOG.md | awk '/^# \[.*\]/ {if (flag) exit; flag=1; next} flag && /^# \[.*\]/ {exit} flag {print}' > body.md
+
+          # 如果body.md为空，添加默认内容
+          if [ ! -s body.md ]; then
+            echo "## 更新内容" > body.md
+            echo "" >> body.md
+            echo "请查看 [CHANGELOG.md](https://github.com/ygqygq2/hwcctl/blob/main/CHANGELOG.md) 获取详细更新信息。" >> body.md
+          fi
+
+          echo "Generated release body:"
+          cat body.md
 
       - name: Publish release
         uses: ncipollo/release-action@v1
@@ -71,4 +81,4 @@ jobs:
           artifacts: "dist/*.zip,dist/checksums.txt"
           bodyFile: "body.md"
           allowUpdates: true
-          updateOnlyUnreleased: true
+          updateOnlyUnreleased: false
