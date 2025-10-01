@@ -20,6 +20,13 @@ func SetVersionInfo(v, bt, gc string) {
 	version = v
 	buildTime = bt
 	gitCommit = gc
+	// 更新 rootCmd 的版本信息
+	rootCmd.Version = v
+	// 重新设置版本模板
+	rootCmd.SetVersionTemplate(`hwcctl 版本 {{.Version}}
+构建时间: ` + bt + `
+Git 提交: ` + gc + `
+`)
 }
 
 // rootCmd 代表没有调用子命令时的基础命令

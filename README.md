@@ -35,8 +35,8 @@ hwcctl 是一个强大、易用的华为云命令行工具，类似于 AWS CLI�
 go install github.com/ygqygq2/hwcctl@latest
 
 # 或从 GitHub Releases 下载
-wget https://github.com/ygqygq2/hwcctl/releases/latest/download/hwcctl_linux_amd64.tar.gz
-tar -xzf hwcctl_linux_amd64.tar.gz
+wget https://github.com/ygqygq2/hwcctl/releases/latest/download/hwcctl_Linux_x86_64.zip
+unzip hwcctl_Linux_x86_64.zip
 sudo mv hwcctl /usr/local/bin/
 ```
 
