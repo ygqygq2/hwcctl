@@ -1,5 +1,12 @@
 # Change Log
 
+# [0.0.4]
+
+## 改进优化 ✨
+
+- 支持 `go install github.com/ygqygq2/hwcctl@latest` 直接安装，无需手动下载二进制
+- 增强版本信息显示：通过 `go install` 安装时也能自动从构建元数据中读取版本号、提交哈希和构建时间
+
 # [0.0.3]
 
 ## 修复问题 🐛
